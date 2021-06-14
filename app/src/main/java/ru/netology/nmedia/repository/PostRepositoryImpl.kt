@@ -1,6 +1,8 @@
 package ru.netology.nmedia.repository
 
 import androidx.lifecycle.*
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import okio.IOException
 import ru.netology.nmedia.api.*
 import ru.netology.nmedia.dao.PostDao
@@ -14,6 +16,14 @@ import ru.netology.nmedia.error.UnknownError
 
 class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
     override val data = dao.getAll().map(List<PostEntity>::toDto)
+    @Volatile private var lastLastNotPublishedId : Long = Long.MAX_VALUE / 2
+        init {
+            MainScope().launch {
+                dao.getLastNotPublishedId().let {
+                    if (it != 0L) lastLastNotPublishedId = it
+                }
+            }
+        }
 
     override suspend fun getAll() {
         try {
@@ -48,10 +58,44 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
     }
 
     override suspend fun removeById(id: Long) {
-        TODO("Not yet implemented")
+        try {
+            //согласно условию задачи, сначала удаляем в БД
+            dao.removeById(id)
+            //потом с сервера
+            val response = PostsApi.service.removeById(id)
+            if (!response.isSuccessful) {
+                throw ApiError(response.code(), response.message())
+            }
+        } catch (e: IOException) {
+            throw NetworkError
+        } catch (e: Exception) {
+            throw UnknownError
+        }
     }
 
     override suspend fun likeById(id: Long) {
-        TODO("Not yet implemented")
+        try {
+            data.value?.find { it.id == id }?.let {
+                it.copy(
+                    likedByMe = !it.likedByMe,
+                    likes     =  it.likes + if (it.likedByMe) -1 else +1
+                ).apply {
+            //согласно условию задачи, сначала применяем в бд
+                    dao.insert(PostEntity.fromDto(this))
+            //потом на сервер
+                    PostsApi.service.let {api->
+                        if (likedByMe) api.likeById(id) else api.dislikeById(id)
+                    }.apply {
+                        if (!isSuccessful) {
+                            throw ApiError(code(), message())
+                        }
+                    }
+                }
+            } ?: throw RuntimeException("UnknownError")
+        } catch (e: IOException) {
+            throw NetworkError
+        } catch (e: Exception) {
+            throw UnknownError
+        }
     }
 }

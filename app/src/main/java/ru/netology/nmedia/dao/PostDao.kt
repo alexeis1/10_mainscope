@@ -9,6 +9,9 @@ import ru.netology.nmedia.entity.PostEntity
 
 @Dao
 interface PostDao {
+    @Query("SELECT COALESCE(MAX(id), 0) FROM PostEntity WHERE isPublished=0")
+    suspend fun getLastNotPublishedId() : Long
+
     @Query("SELECT * FROM PostEntity ORDER BY id DESC")
     fun getAll(): LiveData<List<PostEntity>>
 
