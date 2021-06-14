@@ -13,14 +13,19 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
-
+        
+      - name: Decode google services
+        env: 
+          FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
+      
+        run: echo $FIREBASE_SECRET > app/google-services.json
+      
       - name: Build
         run: |
           chmod +x ./gradlew
           ./gradlew build --info
-
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: app-debug.apk  
+          name: app-debug.apk
           path: app/build/outputs/apk/debug/app-debug.apk
