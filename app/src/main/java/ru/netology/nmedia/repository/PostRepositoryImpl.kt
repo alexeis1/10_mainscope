@@ -16,7 +16,10 @@ import ru.netology.nmedia.error.UnknownError
 
 class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
     override val data = dao.getAll().map(List<PostEntity>::toDto)
-    @Volatile private var lastLastNotPublishedId : Long = Long.MAX_VALUE / 2
+    private  val notPublishedIdStart = Long.MAX_VALUE / 2
+    private  var lastLastNotPublishedId : Long = notPublishedIdStart
+    private  fun incrementId() = ++lastLastNotPublishedId
+
         init {
             MainScope().launch {
                 dao.getLastNotPublishedId().let {
@@ -43,12 +46,20 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     override suspend fun save(post: Post) {
         try {
+            val newPost = if (post.id == 0L) {
+                post.copy(id = incrementId(), isPublished = false)
+            } else {
+                post
+            }
+            dao.insert(PostEntity.fromDto(dto = newPost, newPost.isPublished))
+
             val response = PostsApi.service.save(post)
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
             }
 
             val body = response.body() ?: throw ApiError(response.code(), response.message())
+            dao.removeById(newPost.id)
             dao.insert(PostEntity.fromDto(body))
         } catch (e: IOException) {
             throw NetworkError

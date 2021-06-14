@@ -115,5 +115,19 @@
             app:icon="@drawable/ic_share_24"
             style="@style/Widget.AppTheme.IconButton"
             />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/resend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/common_spacing"
+            android:contentDescription="@string/description_post_share"
+            app:layout_constraintStart_toEndOf="@+id/share"
+            app:layout_constraintTop_toBottomOf="@id/footer"
+            app:icon="@drawable/ic_baseline_refresh_24"
+            tools:visibility="visible"
+            android:visibility="gone"
+            style="@style/Widget.AppTheme.IconButton"
+            />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>
